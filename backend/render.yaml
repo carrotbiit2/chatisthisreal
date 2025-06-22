@@ -3,10 +3,8 @@ services:
     name: my-react-app-backend
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1
+    startCommand: gunicorn simple_app:app --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
-      - key: PYTHONPATH
-        value: .
     plan: free 
