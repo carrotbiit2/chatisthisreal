@@ -6,8 +6,12 @@ import sys
 import random
 
 app = Flask(__name__)
-# CORS configuration - allow all origins to fix the CORS issue
-CORS(app, origins="*")  # Allow all origins for now
+# CORS configuration - explicitly allow your Vercel domain
+CORS(app, 
+     origins=["https://chatisthisreal-zeta.vercel.app", "http://localhost:5173", "http://localhost:3000"],
+     methods=["GET", "POST", "OPTIONS"],
+     allow_headers=["Content-Type"],
+     supports_credentials=False)
 
 # Configuration
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
@@ -62,24 +66,44 @@ def load_model():
                 print(f"Model file not found locally: {model_file}")
                 return False
         
-        # Add myEnv to the Python path so we can import from it
-        myenv_path = os.path.join(os.path.dirname(__file__), 'myEnv')
+        # Add current directory and myEnv to the Python path
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        myenv_path = os.path.join(current_dir, 'myEnv')
+        
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
         if myenv_path not in sys.path:
-            sys.path.append(myenv_path)
+            sys.path.insert(0, myenv_path)
+        
+        print(f"Python path: {sys.path}")
+        print(f"Current directory: {current_dir}")
+        print(f"myEnv path: {myenv_path}")
         
         # Import the actual model functions only when needed
         try:
-            from myEnv.runModel import runModel as imported_runModel
+            # Try different import approaches
+            try:
+                from myEnv.runModel import runModel as imported_runModel
+                print("Successfully imported runModel using myEnv.runModel")
+            except ImportError:
+                from runModel import runModel as imported_runModel
+                print("Successfully imported runModel using direct import")
+            
             runModel = imported_runModel
-            print("Successfully imported runModel")
         except ImportError as e:
             print(f"Failed to import runModel: {e}")
             runModel = None
             
         try:
-            from myEnv.sigmaMethod import runVideo as imported_runVideo
+            # Try different import approaches
+            try:
+                from myEnv.sigmaMethod import runVideo as imported_runVideo
+                print("Successfully imported runVideo using myEnv.sigmaMethod")
+            except ImportError:
+                from sigmaMethod import runVideo as imported_runVideo
+                print("Successfully imported runVideo using direct import")
+            
             runVideo = imported_runVideo
-            print("Successfully imported runVideo")
         except ImportError as e:
             print(f"Failed to import runVideo: {e}")
             runVideo = None
@@ -99,8 +123,16 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@app.route('/upload', methods=['POST'])
+@app.route('/upload', methods=['POST', 'OPTIONS'])
 def upload_file():
+    # Handle CORS preflight requests
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', 'https://chatisthisreal-zeta.vercel.app')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+    
     print("=== UPLOAD REQUEST RECEIVED ===")
     print(f"Request files: {request.files}")
     print(f"Request form: {request.form}")

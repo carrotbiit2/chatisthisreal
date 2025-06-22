@@ -54,22 +54,54 @@ function Home({ isDarkMode, onToggleDarkMode }) {
       setIsLoading(true); // Start loading
       
       try {
-        console.log('Starting upload...');
+        console.log('=== UPLOAD DEBUG INFO ===');
         console.log('File:', file);
+        console.log('File name:', file.name);
+        console.log('File size:', file.size);
+        console.log('File type:', file.type);
         console.log('API URL:', `${API_BASE_URL}/upload`);
+        console.log('Environment:', import.meta.env.PROD ? 'production' : 'development');
         
         // Create FormData to send file
         const formData = new FormData();
         formData.append('file', file);
         
-        // Send file to Python backend using config URL
-        const response = await fetch(`${API_BASE_URL}/upload`, {
-          method: 'POST',
-          body: formData,
+        // Log FormData contents
+        console.log('FormData entries:');
+        for (let [key, value] of formData.entries()) {
+          console.log(`${key}:`, value);
+        }
+        
+        console.log('Sending request...');
+        
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000);
         });
         
+        // Send file to Python backend using config URL
+        const fetchPromise = fetch(`${API_BASE_URL}/upload`, {
+          method: 'POST',
+          body: formData,
+          // Don't set Content-Type header - let browser set it with boundary
+          mode: 'cors',
+          credentials: 'omit'
+        });
+        
+        // Race between fetch and timeout
+        const response = await Promise.race([fetchPromise, timeoutPromise]);
+        
+        console.log('Response received!');
         console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
+        console.log('Response status text:', response.statusText);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+        
+        if (!response.ok) {
+          console.error('Response not OK. Status:', response.status);
+          const errorText = await response.text();
+          console.error('Error response body:', errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
         
         const result = await response.json();
         console.log('Response body:', result);
@@ -83,9 +115,18 @@ function Home({ isDarkMode, onToggleDarkMode }) {
           alert(`Upload failed: ${result.error}`);
         }
       } catch (error) {
-        console.error('Error uploading file:', error);
-        console.error('Error details:', error.message);
-        alert('Error uploading file. Please try again.');
+        console.error('=== UPLOAD ERROR ===');
+        console.error('Error type:', error.constructor.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          alert('Network error: Cannot connect to server. Please check your internet connection.');
+        } else if (error.message.includes('CORS')) {
+          alert('CORS error: Server is not allowing requests from this domain.');
+        } else {
+          alert(`Error uploading file: ${error.message}`);
+        }
       } finally {
         setIsLoading(false); // Stop loading regardless of success/failure
       }
