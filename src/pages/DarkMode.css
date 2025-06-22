@@ -1,0 +1,300 @@
+/* Dark Mode Styles */
+.page.dark-mode {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.page.dark-mode h1 {
+  color: #60a5fa;
+}
+
+/* Upload Tabs - Dark Mode */
+.page.dark-mode .tab-btn {
+  background: #1e293b;
+  border: 2px solid #334155;
+  color: #94a3b8;
+}
+
+.page.dark-mode .tab-btn:hover {
+  color: #60a5fa;
+  background: #334155;
+}
+
+.page.dark-mode .tab-btn.active {
+  color: #60a5fa;
+  background: #1e293b;
+  border-color: #60a5fa;
+  border-bottom-color: #1e293b;
+}
+
+.page.dark-mode .tab-btn.active::after {
+  background: #1e293b;
+}
+
+/* Upload Area - Dark Mode */
+.page.dark-mode .upload-area {
+  background: #1e293b;
+  border: 3px dashed #60a5fa;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.page.dark-mode .upload-area:hover {
+  border-color: #3b82f6;
+  background-color: #334155;
+}
+
+.page.dark-mode .upload-area.dragover {
+  border-color: #60a5fa;
+  background-color: #1e3a8a;
+  box-shadow: 0 8px 25px rgba(96, 165, 250, 0.3);
+}
+
+.page.dark-mode .upload-content h3 {
+  color: #60a5fa;
+}
+
+.page.dark-mode .upload-content p {
+  color: #94a3b8;
+}
+
+.page.dark-mode .upload-btn {
+  background: #60a5fa;
+  color: #0f172a;
+}
+
+.page.dark-mode .upload-btn:hover {
+  background: #3b82f6;
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+}
+
+/* Preview Page - Dark Mode */
+.page.dark-mode .preview-header h1 {
+  color: #60a5fa;
+}
+
+.page.dark-mode .submit-btn {
+  background: #60a5fa;
+  color: #0f172a;
+}
+
+.page.dark-mode .submit-btn:hover {
+  background: #3b82f6;
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+}
+
+.page.dark-mode .change-btn {
+  background: #475569;
+  color: #ffffff;
+}
+
+.page.dark-mode .change-btn:hover {
+  background: #64748b;
+}
+
+/* Large Preview - Dark Mode */
+.page.dark-mode .large-image,
+.page.dark-mode .large-video {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Analysis Result - Dark Mode */
+.page.dark-mode .analysis-result {
+  background: #1e293b;
+  border: 2px solid #60a5fa;
+  color: #60a5fa;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.page.dark-mode .analysis-result h1,
+.page.dark-mode .analysis-result h3,
+.page.dark-mode .analysis-result p {
+  color: #60a5fa;
+}
+
+.page.dark-mode .percentage-marker {
+  background: #60a5fa;
+}
+
+.page.dark-mode .percentage-value {
+  color: #60a5fa;
+  background: #334155;
+  border: 2px solid #60a5fa;
+}
+
+/* Loading Overlay - Dark Mode */
+.page.dark-mode .loading-overlay {
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.page.dark-mode .loading-spinner {
+  border: 4px solid #334155;
+  border-top: 4px solid #60a5fa;
+}
+
+.page.dark-mode .loading-overlay p {
+  color: #60a5fa;
+}
+
+/* Upload Options - Dark Mode */
+.page.dark-mode .upload-option h3,
+.page.dark-mode .upload-option .upload-content h4 {
+  color: #60a5fa;
+}
+
+.page.dark-mode .video-preview {
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* Success Notification - Dark Mode */
+.page.dark-mode .success-notification {
+  background: #059669;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* Disabled buttons - Dark Mode */
+.page.dark-mode .submit-btn:disabled,
+.page.dark-mode .change-btn:disabled {
+  opacity: 0.4;
+  background: #475569;
+}
+
+/* About Page - Dark Mode */
+.page.dark-mode .about-content {
+  display: grid;
+  gap: 40px;
+  margin-top: 40px;
+}
+
+.page.dark-mode .about-section {
+  background: #1e293b;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  margin-bottom: 0;
+}
+
+.page.dark-mode .about-section:last-child {
+  margin-bottom: 0;
+}
+
+.page.dark-mode .about-section h2 {
+  color: #60a5fa;
+  margin-bottom: 15px;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.page.dark-mode .about-section p {
+  color: #94a3b8;
+  line-height: 1.7;
+  margin-bottom: 15px;
+}
+
+.page.dark-mode .about-section ul {
+  color: #94a3b8;
+  padding-left: 20px;
+}
+
+.page.dark-mode .about-section li {
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+/* Contact Page - Dark Mode */
+.page.dark-mode .contact-form-full {
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.page.dark-mode .contact-form-full h2 {
+  color: #60a5fa;
+  margin-bottom: 25px;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.page.dark-mode .form-group {
+  margin-bottom: 20px;
+}
+
+.page.dark-mode .form-group label {
+  color: #60a5fa;
+  font-weight: 500;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.page.dark-mode .form-group input,
+.page.dark-mode .form-group select,
+.page.dark-mode .form-group textarea {
+  background: #334155;
+  border: 2px solid #475569;
+  color: #ffffff;
+  padding: 12px 15px;
+  border-radius: 8px;
+  width: 100%;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.page.dark-mode .form-group input:focus,
+.page.dark-mode .form-group select:focus,
+.page.dark-mode .form-group textarea:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+
+.page.dark-mode .form-group input::placeholder,
+.page.dark-mode .form-group textarea::placeholder {
+  color: #64748b;
+}
+
+.page.dark-mode .form-group select option {
+  background: #334155;
+  color: #ffffff;
+}
+
+.page.dark-mode .contact-form-full .submit-btn {
+  background: #60a5fa;
+  color: #0f172a;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.page.dark-mode .contact-form-full .submit-btn:hover {
+  background: #3b82f6;
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+  transform: translateY(-2px);
+}
+
+.page.dark-mode .contact-form-full .submit-btn:disabled {
+  opacity: 0.4;
+  background: #475569;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.page.dark-mode .success-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page.dark-mode .success-icon {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.page.dark-mode .success-text {
+  font-weight: 500;
+} 

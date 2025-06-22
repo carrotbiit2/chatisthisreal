@@ -1,0 +1,15 @@
+Flask==2.3.3
+Flask-CORS==4.0.0
+Werkzeug==2.3.7
+gunicorn==21.2.0
+
+# Core ML and Data Science (CPU-only versions to save memory)
+torch
+torchvision
+numpy
+scipy
+scikit-image
+
+# Image Processing
+Pillow
+opencv-python-headless
