@@ -214,61 +214,18 @@ def upload_file():
         except Exception as list_error:
             print(f"ERROR listing uploads directory: {list_error}")
         
-        # Try to load model if not already loaded
-        if not MODEL_AVAILABLE:
-            load_model()
+        # For now, return a quick response without loading the model
+        # This will prevent timeouts while we debug the model loading
+        print("Returning quick response without model processing")
         
-        # Use the actual AI detection model if available, otherwise use random
-        if MODEL_AVAILABLE and runModel is not None:
-            try:
-                # Determine if file is video or image based on extension
-                video_extensions = {'.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv', '.webm'}
-                file_extension = os.path.splitext(filepath)[1].lower()
-                
-                # Use the actual model to detect AI vs Human
-                if file_extension in video_extensions and runVideo is not None:
-                    model_result = runVideo(filepath, 3)
-                    print("______________VIDEO______________")
-                else:
-                    model_result = runModel(filepath)
-                    print("______________IMAGE______________")
-                print(f"Model result: {model_result}")
-                
-                # Convert model result to percentage (assuming it returns a confidence score)
-                if isinstance(model_result, (int, float)):
-                    percentage = round(float(model_result), 1)
-                    print("==============MODEL SUCCESS==============")
-                else:
-                    # Fallback to random if model result is unexpected
-                    percentage = round(random.random() * 100, 1)
-                    print("==============MODEL FALLBACK==============")
-            except Exception as e:
-                print(f"Model failed, using fallback: {e}")
-                print("==============MODEL ERROR FALLBACK==============")
-                percentage = round(random.random() * 100, 1)
-        else:
-            # Fallback to random function
-            percentage = round(random.random() * 100, 1)
-            print("==============NO MODEL FALLBACK==============")
-        
-        # Calculate percentage and determine AI/Human
+        # Calculate a simple random percentage for now
+        percentage = round(random.random() * 100, 1)
         if percentage < 50:
             confidence = round(100 - percentage, 1)
-            analysis_result = f"{confidence}% sure this is AI"
+            analysis_result = f"{confidence}% sure this is AI (demo mode)"
         else:
             confidence = round(percentage, 1)
-            analysis_result = f"{confidence}% sure this is human"
-        
-        print(f"Percentage: {percentage}%")
-        print(f"Analysis: {analysis_result}")
-        
-        print(f'''
-        ____________________________________________________
-        Image file path: {filepath}
-        Percentage: {percentage}%
-        Analysis: {analysis_result}
-        ____________________________________________________
-        ''')
+            analysis_result = f"{confidence}% sure this is human (demo mode)"
         
         # Delete the uploaded file after processing
         try:
@@ -280,30 +237,32 @@ def upload_file():
         except Exception as e:
             print(f"ERROR: Failed to delete file {filepath}: {str(e)}")
         
-        # Clean up memory after processing
-        try:
-            import gc
-            gc.collect()  # Force garbage collection
-            if 'torch' in sys.modules:
-                import torch
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-            print("Memory cleanup completed")
-        except Exception as e:
-            print(f"Memory cleanup failed: {e}")
-        
-        return jsonify({
-            'message': 'File uploaded successfully',
+        response = jsonify({
+            'message': 'File uploaded successfully (demo mode)',
             'filename': filename,
             'filepath': filepath,
             'percentage': percentage,
             'analysis_result': analysis_result,
-            'model_used': MODEL_AVAILABLE
-        }), 200
+            'model_used': False,
+            'demo_mode': True
+        })
+        
+        # Add CORS headers to the response
+        response.headers.add('Access-Control-Allow-Origin', 'https://chatisthisreal-zeta.vercel.app')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        
+        return response, 200
         
     except Exception as e:
         print(f"EXCEPTION: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', 'https://chatisthisreal-zeta.vercel.app')
+        return response, 500
+
+@app.route('/test', methods=['GET'])
+def test_endpoint():
+    return jsonify({'message': 'Backend is working!', 'timestamp': '2024-01-01'}), 200
 
 @app.route('/health', methods=['GET'])
 def health_check():
