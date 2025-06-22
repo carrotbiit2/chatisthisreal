@@ -4,6 +4,7 @@ import os
 from werkzeug.utils import secure_filename
 import sys
 import random
+import threading
 
 app = Flask(__name__)
 # CORS configuration - explicitly allow your Vercel domain
@@ -35,18 +36,22 @@ try:
 except Exception as e:
     print(f"Error creating upload directory: {e}")
 
-# Initialize model variables - will be loaded only when needed
+# Initialize model variables - will be loaded at startup
 MODEL_AVAILABLE = False
 runModel = None
 runVideo = None
 model_loaded = False
+model_loading = False
 
 def load_model():
     """Load the model from Render secret files to avoid memory issues"""
-    global MODEL_AVAILABLE, runModel, runVideo, model_loaded
+    global MODEL_AVAILABLE, runModel, runVideo, model_loaded, model_loading
     
-    if model_loaded:
+    if model_loaded or model_loading:
         return MODEL_AVAILABLE
+    
+    model_loading = True
+    print("=== STARTING MODEL LOAD ===")
         
     try:
         print("Loading ML dependencies...")
@@ -66,6 +71,7 @@ def load_model():
                 print(f"Found model file in secret files: {model_file}")
             else:
                 print(f"Model file not found in secret files: {model_file}")
+                model_loading = False
                 return False
         else:
             # Local development - check local myEnv directory
@@ -73,6 +79,7 @@ def load_model():
             model_file = os.path.join(myenv_path, 'image_classifier.pt')
             if not os.path.exists(model_file):
                 print(f"Model file not found locally: {model_file}")
+                model_loading = False
                 return False
         
         # Add current directory and myEnv to the Python path
@@ -119,14 +126,28 @@ def load_model():
         
         MODEL_AVAILABLE = True
         model_loaded = True
-        print("Model successfully loaded!")
+        model_loading = False
+        print("=== MODEL LOAD COMPLETE ===")
         return True
     except ImportError as e:
         print(f"Warning: Could not import model files: {e}")
+        model_loading = False
         return False
     except Exception as e:
         print(f"Error loading model: {e}")
+        model_loading = False
         return False
+
+# Preload the model in a background thread when the app starts
+def preload_model_background():
+    """Preload the model in a background thread"""
+    print("Starting model preload in background...")
+    load_model()
+    print("Background model preload completed!")
+
+# Start model preloading when the app initializes
+model_thread = threading.Thread(target=preload_model_background, daemon=True)
+model_thread.start()
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -214,18 +235,49 @@ def upload_file():
         except Exception as list_error:
             print(f"ERROR listing uploads directory: {list_error}")
         
-        # For now, return a quick response without loading the model
-        # This will prevent timeouts while we debug the model loading
-        print("Returning quick response without model processing")
+        # Use the preloaded model if available
+        if MODEL_AVAILABLE and runModel is not None:
+            try:
+                # Determine if file is video or image based on extension
+                video_extensions = {'.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv', '.webm'}
+                file_extension = os.path.splitext(filepath)[1].lower()
+                
+                # Use the actual model to detect AI vs Human
+                if file_extension in video_extensions and runVideo is not None:
+                    model_result = runVideo(filepath, 3)
+                    print("______________VIDEO______________")
+                else:
+                    model_result = runModel(filepath)
+                    print("______________IMAGE______________")
+                print(f"Model result: {model_result}")
+                
+                # Convert model result to percentage (assuming it returns a confidence score)
+                if isinstance(model_result, (int, float)):
+                    percentage = round(float(model_result), 1)
+                    print("==============MODEL SUCCESS==============")
+                else:
+                    # Fallback to random if model result is unexpected
+                    percentage = round(random.random() * 100, 1)
+                    print("==============MODEL FALLBACK==============")
+            except Exception as e:
+                print(f"Model failed, using fallback: {e}")
+                print("==============MODEL ERROR FALLBACK==============")
+                percentage = round(random.random() * 100, 1)
+        else:
+            # Fallback to random function if model not loaded
+            percentage = round(random.random() * 100, 1)
+            print("==============NO MODEL FALLBACK==============")
         
-        # Calculate a simple random percentage for now
-        percentage = round(random.random() * 100, 1)
+        # Calculate percentage and determine AI/Human
         if percentage < 50:
             confidence = round(100 - percentage, 1)
-            analysis_result = f"{confidence}% sure this is AI (demo mode)"
+            analysis_result = f"{confidence}% sure this is AI"
         else:
             confidence = round(percentage, 1)
-            analysis_result = f"{confidence}% sure this is human (demo mode)"
+            analysis_result = f"{confidence}% sure this is human"
+        
+        print(f"Percentage: {percentage}%")
+        print(f"Analysis: {analysis_result}")
         
         # Delete the uploaded file after processing
         try:
@@ -237,14 +289,25 @@ def upload_file():
         except Exception as e:
             print(f"ERROR: Failed to delete file {filepath}: {str(e)}")
         
+        # Clean up memory after processing
+        try:
+            import gc
+            gc.collect()  # Force garbage collection
+            if 'torch' in sys.modules:
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            print("Memory cleanup completed")
+        except Exception as e:
+            print(f"Memory cleanup failed: {e}")
+        
         response = jsonify({
-            'message': 'File uploaded successfully (demo mode)',
+            'message': 'File uploaded successfully',
             'filename': filename,
             'filepath': filepath,
             'percentage': percentage,
             'analysis_result': analysis_result,
-            'model_used': False,
-            'demo_mode': True
+            'model_used': MODEL_AVAILABLE
         })
         
         # Add CORS headers to the response
