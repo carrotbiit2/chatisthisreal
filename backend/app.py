@@ -4,7 +4,7 @@ import os
 from werkzeug.utils import secure_filename
 import sys
 import random
-import threading
+import time
 
 app = Flask(__name__)
 # CORS configuration - explicitly allow your Vercel domain
@@ -30,13 +30,17 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Create uploads directory if it doesn't exist
 try:
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    print(f"=== SERVER STARTUP ===")
     print(f"Upload directory created/verified: {os.path.abspath(UPLOAD_FOLDER)}")
     print(f"Upload directory exists: {os.path.exists(UPLOAD_FOLDER)}")
     print(f"Upload directory writable: {os.access(UPLOAD_FOLDER, os.W_OK)}")
+    print(f"Current working directory: {os.getcwd()}")
+    print(f"Python version: {sys.version}")
+    print(f"Environment: {'RENDER' if os.environ.get('RENDER') else 'LOCAL'}")
 except Exception as e:
     print(f"Error creating upload directory: {e}")
 
-# Initialize model variables - will be loaded at startup
+# Initialize model variables - will be loaded when needed
 MODEL_AVAILABLE = False
 runModel = None
 runVideo = None
@@ -47,20 +51,35 @@ def load_model():
     """Load the model from Render secret files to avoid memory issues"""
     global MODEL_AVAILABLE, runModel, runVideo, model_loaded, model_loading
     
-    if model_loaded or model_loading:
+    if model_loaded:
+        print("=== MODEL ALREADY LOADED ===")
         return MODEL_AVAILABLE
     
+    if model_loading:
+        print("=== MODEL ALREADY LOADING ===")
+        return False
+    
     model_loading = True
+    start_time = time.time()
     print("=== STARTING MODEL LOAD ===")
+    print(f"Load start time: {start_time}")
         
     try:
-        print("Loading ML dependencies...")
+        print("Step 1: Loading ML dependencies...")
         
         # Optimize PyTorch memory usage
         import torch
+        print(f"PyTorch imported successfully. Version: {torch.__version__}")
         torch.set_num_threads(1)  # Use only 1 thread to save memory
+        print("PyTorch threads set to 1")
+        
         if torch.cuda.is_available():
             torch.cuda.empty_cache()  # Clear GPU cache if available
+            print("CUDA available, cache cleared")
+        else:
+            print("CUDA not available, using CPU")
+        
+        print("Step 2: Checking for model file...")
         
         # Check if we're on Render (secret files are available)
         secret_files_dir = os.environ.get('RENDER_SECRET_FILES_DIR')
@@ -69,6 +88,7 @@ def load_model():
             model_file = os.path.join(secret_files_dir, 'image_classifier.pt')
             if os.path.exists(model_file):
                 print(f"Found model file in secret files: {model_file}")
+                print(f"Model file size: {os.path.getsize(model_file)} bytes")
             else:
                 print(f"Model file not found in secret files: {model_file}")
                 model_loading = False
@@ -81,6 +101,11 @@ def load_model():
                 print(f"Model file not found locally: {model_file}")
                 model_loading = False
                 return False
+            else:
+                print(f"Found model file locally: {model_file}")
+                print(f"Model file size: {os.path.getsize(model_file)} bytes")
+        
+        print("Step 3: Setting up Python paths...")
         
         # Add current directory and myEnv to the Python path
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -95,17 +120,21 @@ def load_model():
         print(f"Current directory: {current_dir}")
         print(f"myEnv path: {myenv_path}")
         
+        print("Step 4: Importing model functions...")
+        
         # Import the actual model functions only when needed
         try:
             # Try different import approaches
             try:
                 from myEnv.runModel import runModel as imported_runModel
                 print("Successfully imported runModel using myEnv.runModel")
-            except ImportError:
+            except ImportError as e:
+                print(f"Failed myEnv.runModel import: {e}")
                 from runModel import runModel as imported_runModel
                 print("Successfully imported runModel using direct import")
             
             runModel = imported_runModel
+            print("runModel function loaded successfully")
         except ImportError as e:
             print(f"Failed to import runModel: {e}")
             runModel = None
@@ -115,11 +144,13 @@ def load_model():
             try:
                 from myEnv.sigmaMethod import runVideo as imported_runVideo
                 print("Successfully imported runVideo using myEnv.sigmaMethod")
-            except ImportError:
+            except ImportError as e:
+                print(f"Failed myEnv.sigmaMethod import: {e}")
                 from sigmaMethod import runVideo as imported_runVideo
                 print("Successfully imported runVideo using direct import")
             
             runVideo = imported_runVideo
+            print("runVideo function loaded successfully")
         except ImportError as e:
             print(f"Failed to import runVideo: {e}")
             runVideo = None
@@ -127,7 +158,13 @@ def load_model():
         MODEL_AVAILABLE = True
         model_loaded = True
         model_loading = False
+        end_time = time.time()
+        load_duration = end_time - start_time
         print("=== MODEL LOAD COMPLETE ===")
+        print(f"Load duration: {load_duration:.2f} seconds")
+        print(f"Model available: {MODEL_AVAILABLE}")
+        print(f"runModel available: {runModel is not None}")
+        print(f"runVideo available: {runVideo is not None}")
         return True
     except ImportError as e:
         print(f"Warning: Could not import model files: {e}")
@@ -135,19 +172,11 @@ def load_model():
         return False
     except Exception as e:
         print(f"Error loading model: {e}")
+        print(f"Exception type: {type(e).__name__}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         model_loading = False
         return False
-
-# Preload the model in a background thread when the app starts
-def preload_model_background():
-    """Preload the model in a background thread"""
-    print("Starting model preload in background...")
-    load_model()
-    print("Background model preload completed!")
-
-# Start model preloading when the app initializes
-model_thread = threading.Thread(target=preload_model_background, daemon=True)
-model_thread.start()
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -155,19 +184,25 @@ def allowed_file(filename):
 
 @app.route('/upload', methods=['POST', 'OPTIONS'])
 def upload_file():
+    request_start_time = time.time()
+    print(f"\n=== UPLOAD REQUEST RECEIVED ===")
+    print(f"Request start time: {request_start_time}")
+    print(f"Request method: {request.method}")
+    print(f"Request headers: {dict(request.headers)}")
+    print(f"Request files: {request.files}")
+    print(f"Request form: {request.form}")
+    
     # Handle CORS preflight requests
     if request.method == 'OPTIONS':
+        print("Handling CORS preflight request")
         response = jsonify({'status': 'ok'})
         response.headers.add('Access-Control-Allow-Origin', 'https://chatisthisreal-zeta.vercel.app')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
         response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
         return response
     
-    print("=== UPLOAD REQUEST RECEIVED ===")
-    print(f"Request files: {request.files}")
-    print(f"Request form: {request.form}")
-    
     try:
+        print("Step 1: Checking if file was uploaded...")
         # Check if file was uploaded
         if 'file' not in request.files:
             print("ERROR: No file in request.files")
@@ -176,17 +211,20 @@ def upload_file():
         file = request.files['file']
         print(f"File object: {file}")
         print(f"File filename: {file.filename}")
+        print(f"File content type: {file.content_type}")
         
         # Check if file was selected
         if file.filename == '':
             print("ERROR: Empty filename")
             return jsonify({'error': 'No file selected'}), 400
         
+        print("Step 2: Checking file type...")
         # Check if file type is allowed
         if not allowed_file(file.filename):
             print(f"ERROR: File type not allowed: {file.filename}")
             return jsonify({'error': 'File type not allowed'}), 400
         
+        print("Step 3: Saving file...")
         # Save the file
         if file.filename is None:
             print("ERROR: Filename is None")
@@ -235,21 +273,39 @@ def upload_file():
         except Exception as list_error:
             print(f"ERROR listing uploads directory: {list_error}")
         
-        # Use the preloaded model if available
+        print("Step 4: Loading model...")
+        # Try to load model if not already loaded
+        model_load_start = time.time()
+        if not MODEL_AVAILABLE:
+            print("Model not available, attempting to load...")
+            load_success = load_model()
+            model_load_end = time.time()
+            model_load_duration = model_load_end - model_load_start
+            print(f"Model load attempt completed in {model_load_duration:.2f} seconds")
+            print(f"Model load success: {load_success}")
+        else:
+            print("Model already available, skipping load")
+        
+        print("Step 5: Processing with model...")
+        # Use the actual AI detection model if available, otherwise use random
         if MODEL_AVAILABLE and runModel is not None:
             try:
                 # Determine if file is video or image based on extension
                 video_extensions = {'.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv', '.webm'}
                 file_extension = os.path.splitext(filepath)[1].lower()
+                print(f"File extension: {file_extension}")
                 
                 # Use the actual model to detect AI vs Human
                 if file_extension in video_extensions and runVideo is not None:
+                    print("Processing as VIDEO")
                     model_result = runVideo(filepath, 3)
                     print("______________VIDEO______________")
                 else:
+                    print("Processing as IMAGE")
                     model_result = runModel(filepath)
                     print("______________IMAGE______________")
                 print(f"Model result: {model_result}")
+                print(f"Model result type: {type(model_result)}")
                 
                 # Convert model result to percentage (assuming it returns a confidence score)
                 if isinstance(model_result, (int, float)):
@@ -261,6 +317,9 @@ def upload_file():
                     print("==============MODEL FALLBACK==============")
             except Exception as e:
                 print(f"Model failed, using fallback: {e}")
+                print(f"Model error type: {type(e).__name__}")
+                import traceback
+                print(f"Model error traceback: {traceback.format_exc()}")
                 print("==============MODEL ERROR FALLBACK==============")
                 percentage = round(random.random() * 100, 1)
         else:
@@ -268,6 +327,7 @@ def upload_file():
             percentage = round(random.random() * 100, 1)
             print("==============NO MODEL FALLBACK==============")
         
+        print("Step 6: Calculating results...")
         # Calculate percentage and determine AI/Human
         if percentage < 50:
             confidence = round(100 - percentage, 1)
@@ -276,9 +336,10 @@ def upload_file():
             confidence = round(percentage, 1)
             analysis_result = f"{confidence}% sure this is human"
         
-        print(f"Percentage: {percentage}%")
-        print(f"Analysis: {analysis_result}")
+        print(f"Final percentage: {percentage}%")
+        print(f"Final analysis: {analysis_result}")
         
+        print("Step 7: Cleaning up...")
         # Delete the uploaded file after processing
         try:
             if os.path.exists(filepath):
@@ -301,13 +362,19 @@ def upload_file():
         except Exception as e:
             print(f"Memory cleanup failed: {e}")
         
+        request_end_time = time.time()
+        total_duration = request_end_time - request_start_time
+        print(f"=== UPLOAD REQUEST COMPLETE ===")
+        print(f"Total request duration: {total_duration:.2f} seconds")
+        
         response = jsonify({
             'message': 'File uploaded successfully',
             'filename': filename,
             'filepath': filepath,
             'percentage': percentage,
             'analysis_result': analysis_result,
-            'model_used': MODEL_AVAILABLE
+            'model_used': MODEL_AVAILABLE,
+            'request_duration': round(total_duration, 2)
         })
         
         # Add CORS headers to the response
@@ -318,7 +385,15 @@ def upload_file():
         return response, 200
         
     except Exception as e:
-        print(f"EXCEPTION: {str(e)}")
+        request_end_time = time.time()
+        total_duration = request_end_time - request_start_time
+        print(f"=== UPLOAD REQUEST FAILED ===")
+        print(f"Exception: {str(e)}")
+        print(f"Exception type: {type(e).__name__}")
+        print(f"Total request duration: {total_duration:.2f} seconds")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        
         response = jsonify({'error': str(e)})
         response.headers.add('Access-Control-Allow-Origin', 'https://chatisthisreal-zeta.vercel.app')
         return response, 500

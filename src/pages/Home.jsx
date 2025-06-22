@@ -48,19 +48,24 @@ function Home({ isDarkMode, onToggleDarkMode }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const uploadStartTime = Date.now();
+    
     if (selectedImage || selectedVideo) {
       const file = selectedImage || selectedVideo;
       
       setIsLoading(true); // Start loading
       
       try {
-        console.log('=== UPLOAD DEBUG INFO ===');
+        console.log('=== FRONTEND UPLOAD START ===');
+        console.log('Upload start time:', new Date().toISOString());
         console.log('File:', file);
         console.log('File name:', file.name);
-        console.log('File size:', file.size);
+        console.log('File size:', file.size, 'bytes');
         console.log('File type:', file.type);
+        console.log('File last modified:', new Date(file.lastModified).toISOString());
         console.log('API URL:', `${API_BASE_URL}/upload`);
         console.log('Environment:', import.meta.env.PROD ? 'production' : 'development');
+        console.log('Current timestamp:', Date.now());
         
         // Create FormData to send file
         const formData = new FormData();
@@ -72,26 +77,33 @@ function Home({ isDarkMode, onToggleDarkMode }) {
           console.log(`${key}:`, value);
         }
         
-        console.log('Sending request...');
+        console.log('Creating fetch request...');
+        const requestStartTime = Date.now();
         
         // Create a timeout promise
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000);
+          setTimeout(() => reject(new Error('Request timeout after 60 seconds')), 60000);
         });
         
         // Send file to Python backend using config URL
         const fetchPromise = fetch(`${API_BASE_URL}/upload`, {
           method: 'POST',
           body: formData,
-          // Don't set Content-Type header - let browser set it with boundary
           mode: 'cors',
           credentials: 'omit'
         });
         
+        console.log('Fetch request created, waiting for response...');
+        
         // Race between fetch and timeout
         const response = await Promise.race([fetchPromise, timeoutPromise]);
         
-        console.log('Response received!');
+        const requestEndTime = Date.now();
+        const requestDuration = requestEndTime - requestStartTime;
+        
+        console.log('=== RESPONSE RECEIVED ===');
+        console.log('Response received at:', new Date().toISOString());
+        console.log('Request duration:', requestDuration, 'ms');
         console.log('Response status:', response.status);
         console.log('Response status text:', response.statusText);
         console.log('Response headers:', Object.fromEntries(response.headers.entries()));
@@ -103,11 +115,21 @@ function Home({ isDarkMode, onToggleDarkMode }) {
           throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
         
+        console.log('Parsing response JSON...');
         const result = await response.json();
+        console.log('=== RESPONSE BODY ===');
         console.log('Response body:', result);
+        console.log('Response body type:', typeof result);
+        console.log('Response body keys:', Object.keys(result));
         
         if (response.ok) {
+          console.log('=== UPLOAD SUCCESS ===');
           console.log('File uploaded successfully:', result);
+          console.log('Analysis result:', result.analysis_result);
+          console.log('Percentage:', result.percentage);
+          console.log('Model used:', result.model_used);
+          console.log('Request duration from backend:', result.request_duration, 'seconds');
+          
           setAnalysisResult(result.analysis_result);
           setPercentage(result.percentage);
         } else {
@@ -115,8 +137,14 @@ function Home({ isDarkMode, onToggleDarkMode }) {
           alert(`Upload failed: ${result.error}`);
         }
       } catch (error) {
+        const uploadEndTime = Date.now();
+        const totalUploadDuration = uploadEndTime - uploadStartTime;
+        
         console.error('=== UPLOAD ERROR ===');
+        console.error('Error occurred at:', new Date().toISOString());
+        console.error('Total upload duration:', totalUploadDuration, 'ms');
         console.error('Error type:', error.constructor.name);
+        console.error('Error name:', error.name);
         console.error('Error message:', error.message);
         console.error('Error stack:', error.stack);
         
@@ -124,10 +152,20 @@ function Home({ isDarkMode, onToggleDarkMode }) {
           alert('Network error: Cannot connect to server. Please check your internet connection.');
         } else if (error.message.includes('CORS')) {
           alert('CORS error: Server is not allowing requests from this domain.');
+        } else if (error.message.includes('timeout')) {
+          alert(`Timeout error: ${error.message}. The server took too long to respond.`);
         } else {
           alert(`Error uploading file: ${error.message}`);
         }
       } finally {
+        const uploadEndTime = Date.now();
+        const totalUploadDuration = uploadEndTime - uploadStartTime;
+        
+        console.log('=== UPLOAD COMPLETE ===');
+        console.log('Upload completed at:', new Date().toISOString());
+        console.log('Total upload duration:', totalUploadDuration, 'ms');
+        console.log('Loading state set to false');
+        
         setIsLoading(false); // Stop loading regardless of success/failure
       }
     }
