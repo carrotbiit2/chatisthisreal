@@ -1,15 +1,27 @@
+# Essential web framework
 Flask==2.3.3
 Flask-CORS==4.0.0
 Werkzeug==2.3.7
+
+# Production server (only needed for deployment)
 gunicorn==21.2.0
 
-# Core ML and Data Science (CPU-only versions to save memory)
+# Core ML (CPU-only to save memory)
 torch
 torchvision
+
+# Essential numerical computing
 numpy
+
+# Image processing (minimal)
+Pillow
+opencv-python-headless
+
+# Scientific computing (can be replaced with numpy-only implementations)
 scipy
 scikit-image
 
-# Image Processing
-Pillow
-opencv-python-headless
+# Alternative: If you want to minimize further, you could replace:
+# scipy.stats.kurtosis/skew -> numpy or custom implementation
+# scipy.spatial.distance.pdist -> numpy-based Euclidean distance
+# scikit-image.feature.peak_local_max -> numpy-based peak detection

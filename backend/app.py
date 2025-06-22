@@ -68,10 +68,22 @@ def load_model():
             sys.path.append(myenv_path)
         
         # Import the actual model functions only when needed
-        from myEnv.runModel import runModel as imported_runModel
-        from myEnv.sigmaMethod import runVideo as imported_runVideo
-        runModel = imported_runModel
-        runVideo = imported_runVideo
+        try:
+            from myEnv.runModel import runModel as imported_runModel
+            runModel = imported_runModel
+            print("Successfully imported runModel")
+        except ImportError as e:
+            print(f"Failed to import runModel: {e}")
+            runModel = None
+            
+        try:
+            from myEnv.sigmaMethod import runVideo as imported_runVideo
+            runVideo = imported_runVideo
+            print("Successfully imported runVideo")
+        except ImportError as e:
+            print(f"Failed to import runVideo: {e}")
+            runVideo = None
+        
         MODEL_AVAILABLE = True
         model_loaded = True
         print("Model successfully loaded!")
