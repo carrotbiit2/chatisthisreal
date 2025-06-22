@@ -14,7 +14,14 @@ CORS(app,
      supports_credentials=False)
 
 # Configuration
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+# Use a more reliable upload directory for Render
+if os.environ.get('RENDER'):
+    # On Render, use /tmp for uploads (temporary storage)
+    UPLOAD_FOLDER = '/tmp/uploads'
+else:
+    # Local development
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'avi', 'mov', 'wmv'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -23,6 +30,8 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 try:
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     print(f"Upload directory created/verified: {os.path.abspath(UPLOAD_FOLDER)}")
+    print(f"Upload directory exists: {os.path.exists(UPLOAD_FOLDER)}")
+    print(f"Upload directory writable: {os.access(UPLOAD_FOLDER, os.W_OK)}")
 except Exception as e:
     print(f"Error creating upload directory: {e}")
 
@@ -167,6 +176,9 @@ def upload_file():
         absolute_filepath = os.path.abspath(filepath)
         print(f"Attempting to save file to: {filepath}")
         print(f"Absolute filepath: {absolute_filepath}")
+        print(f"Upload folder: {app.config['UPLOAD_FOLDER']}")
+        print(f"Upload folder exists: {os.path.exists(app.config['UPLOAD_FOLDER'])}")
+        print(f"Upload folder writable: {os.access(app.config['UPLOAD_FOLDER'], os.W_OK)}")
         
         # Check if file already exists
         if os.path.exists(filepath):
@@ -180,8 +192,12 @@ def upload_file():
                 counter += 1
             print(f"Using new filename: {os.path.basename(filepath)}")
         
-        file.save(filepath)
-        print(f"SUCCESS: File saved to {filepath}")
+        try:
+            file.save(filepath)
+            print(f"SUCCESS: File saved to {filepath}")
+        except Exception as save_error:
+            print(f"ERROR saving file: {save_error}")
+            return jsonify({'error': f'Failed to save file: {save_error}'}), 500
         
         # Verify file was actually saved
         if os.path.exists(filepath):
@@ -189,10 +205,14 @@ def upload_file():
             print(f"VERIFICATION: File exists with size {file_size} bytes")
         else:
             print(f"ERROR: File was not actually saved to {filepath}")
+            return jsonify({'error': 'File was not saved successfully'}), 500
         
         # List contents of uploads directory
-        uploads_contents = os.listdir(app.config['UPLOAD_FOLDER'])
-        print(f"Uploads directory contents: {uploads_contents}")
+        try:
+            uploads_contents = os.listdir(app.config['UPLOAD_FOLDER'])
+            print(f"Uploads directory contents: {uploads_contents}")
+        except Exception as list_error:
+            print(f"ERROR listing uploads directory: {list_error}")
         
         # Try to load model if not already loaded
         if not MODEL_AVAILABLE:
