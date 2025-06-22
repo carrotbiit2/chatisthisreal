@@ -412,16 +412,29 @@ def runModel(imagePath):
     model=ImageClassifier(feature_extractor,15)
     model=model.to(device)
     
-    # Use dynamic path for model file
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    model_path = os.path.join(current_dir, "image_classifier.pt")
+    # Use dynamic path for model file - check for secret files first
+    import os
+    secret_files_dir = os.environ.get('RENDER_SECRET_FILES_DIR')
+    if secret_files_dir:
+        print(f"Using secret files directory: {secret_files_dir}")
+        model_path = os.path.join(secret_files_dir, 'image_classifier.pt')
+    else:
+        # Local development - use local myEnv directory
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        model_path = os.path.join(current_dir, "image_classifier.pt")
+    
+    print(f"Loading model from: {model_path}")
     
     try:
         model.load_state_dict(torch.load(model_path, map_location=device))
+        print(f"Model loaded successfully from {model_path}")
     except FileNotFoundError:
         print(f"Model file not found at {model_path}")
         # Return a fallback value if model is not available
         return 50.0  # Return 50.0% as neutral value (already rounded to 1 decimal)
+    except Exception as e:
+        print(f"Error loading model from {model_path}: {e}")
+        return 50.0  # Return 50.0% as neutral value
 
     model.eval()  # Set to evaluation mode
     with torch.no_grad():
